@@ -3,10 +3,12 @@ package si.fri.jus.perspective;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.SurfaceView;
+import android.view.View;
 import android.view.WindowManager;
 import android.widget.Toast;
 
@@ -16,10 +18,70 @@ import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
 import org.opencv.core.Mat;
 
-public class MainActivity extends AppCompatActivity implements CameraBridgeViewBase.CvCameraViewListener2 {
+public class MainActivity extends AppCompatActivity implements CameraBridgeViewBase.CvCameraViewListener2, View.OnClickListener {
 
-    private static final String TAG = "OCVSample::Activity";
+    private static final String TAG = "Perspective";
     private CameraBridgeViewBase _cameraBridgeViewBase;
+
+    private static AppState appState = AppState.STOPPED;
+    private static Mat prevMat = null;
+
+    private FloatingActionButton mainButton;
+    private FloatingActionButton pauseButton;
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+
+        setContentView(R.layout.activity_main);
+
+        ActivityCompat.requestPermissions(MainActivity.this,
+                new String[]{Manifest.permission.CAMERA},
+                1);
+
+        _cameraBridgeViewBase = findViewById(R.id.main_surface);
+        _cameraBridgeViewBase.setVisibility(SurfaceView.VISIBLE);
+        _cameraBridgeViewBase.setCvCameraViewListener(this);
+
+        // set buttons
+        mainButton = findViewById(R.id.main);
+        pauseButton = findViewById(R.id.pause);
+        // add on click listeners
+        mainButton.setOnClickListener(this);
+        pauseButton.setOnClickListener(this);
+    }
+
+    @Override
+    public void onClick(View view) {
+        switch (view.getId()) {
+            case R.id.main: {
+                // stop or reset after pause
+                if(appState.equals(AppState.RUNNING) || appState.equals(AppState.PAUSED)) {
+                    mainButton.setImageResource(R.drawable.baseline_play_arrow_white_48);
+                    pauseButton.setVisibility(View.GONE);
+                    appState = AppState.STOPPED;
+                    reset();
+                    prevMat = null;
+                }
+                // start
+                else if(appState.equals(AppState.STOPPED)){
+                    mainButton.setImageResource(R.drawable.baseline_stop_white_48);
+                    pauseButton.setVisibility(View.VISIBLE);
+                    appState = AppState.RUNNING;
+                }
+                break;
+            }
+            case R.id.pause: {
+                mainButton.setImageResource(R.drawable.baseline_clear_white_48);
+                pauseButton.setVisibility(View.GONE);
+                appState = AppState.PAUSED;
+                break;
+            }
+        }
+    }
 
     private BaseLoaderCallback _baseLoaderCallback = new BaseLoaderCallback(this) {
         @Override
@@ -36,25 +98,6 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
             }
         }
     };
-
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
-
-        setContentView(R.layout.activity_main);
-
-        // Permissions for Android 6+
-        ActivityCompat.requestPermissions(MainActivity.this,
-                new String[]{Manifest.permission.CAMERA},
-                1);
-
-        _cameraBridgeViewBase = (CameraBridgeViewBase) findViewById(R.id.main_surface);
-        _cameraBridgeViewBase.setVisibility(SurfaceView.VISIBLE);
-        _cameraBridgeViewBase.setCvCameraViewListener(this);
-    }
 
     @Override
     public void onPause() {
@@ -79,19 +122,12 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         switch (requestCode) {
             case 1: {
                 // If request is cancelled, the result arrays are empty.
-                if (grantResults.length > 0
-                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    // permission was granted, yay! Do the
-                    // contacts-related task you need to do.
-                } else {
-                    // permission denied, boo! Disable the
-                    // functionality that depends on this permission.
-                    Toast.makeText(MainActivity.this, "Permission denied to read your External storage", Toast.LENGTH_SHORT).show();
+                if (!(grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED)) {
+                    Toast.makeText(MainActivity.this, "Permission to access camera denied", Toast.LENGTH_SHORT).show();
                 }
-                return;
+                break;
             }
-            // other 'case' lines to check for other
-            // permissions this app might request
         }
     }
 
@@ -113,9 +149,19 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     }
 
     public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
-        Mat matGray = inputFrame.rgba();
-        perspective(matGray.getNativeObjAddr());
-        return matGray;
+        Mat mat = inputFrame.rgba();
+
+        if(appState.equals(AppState.RUNNING)) {
+            perspective(mat.getNativeObjAddr());
+        } else if(appState.equals(AppState.PAUSED)) {
+            if(prevMat == null) {
+                perspective(mat.getNativeObjAddr());
+                prevMat = mat.clone();
+            }
+            return prevMat;
+        }
+
+        return mat;
     }
 
     public native void perspective(long matAddrGray);
