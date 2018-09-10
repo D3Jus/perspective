@@ -4,7 +4,7 @@
 
 #define FRAME_W 640
 #define FRAME_H 360
-#define MIN_SEGMENT_LENGTH 30
+#define MIN_SEGMENT_LENGTH 20
 
 namespace pp {
     cv::Point vanishingPoint;
@@ -106,9 +106,10 @@ namespace pp {
 
             for (std::vector<Line>::size_type j = i + 1; j < input.size(); j++) {
 
-                int isIn = (int) cv::pointPolygonTest(boundary, input.at(j).getPoint1(), false);
+                int test1 = (int) cv::pointPolygonTest(boundary, input.at(j).getPoint1(), false);
+                int test2 = (int) cv::pointPolygonTest(boundary, input.at(j).getPoint2(), false);
 
-                if (isIn >= 0) {
+                if (test1 >= 0 && test2 >= 0) {
 
                     Line lineI = input.at(i);
                     Line lineJ = input.at(j);
@@ -139,12 +140,18 @@ namespace pp {
 
         std::vector<cv::Point2f> mbCoordinates;
         cv::Vec4f output;
+        std::sort(input.begin(), input.end(),
+                  [](Line a, Line b) { return a.getSegmentLength() > b.getSegmentLength(); });
 
         for (auto line : input) {
-            mbCoordinates.emplace_back(line.getM(), line.getB());
+            auto weight = (int) std::ceil(line.getSegmentLength() / 100);
+
+            for(int i = 0; i < weight; i++) {
+                mbCoordinates.emplace_back(line.getM(), line.getB());
+            }
         }
 
-        cv::fitLine(mbCoordinates, output, CV_DIST_L1, 0, 0.01, 0.01);
+        cv::fitLine(mbCoordinates, output, CV_DIST_L1, 0, 0.001, 0.001);
 
         Line outputLine(cv::Point2f(0, (-output[2] * output[1] / output[0]) + output[3]),
                         cv::Point2f(100, ((100 - output[2]) * output[1] / output[0]) + output[3]));

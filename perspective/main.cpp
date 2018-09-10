@@ -38,6 +38,7 @@ int main(int argc, char** argv)
 
     VideoCapture video(path);
     pp::reset();
+    Scalar mainColor(142, 57, 58);
 
     for(;;)
     {
@@ -54,14 +55,11 @@ int main(int argc, char** argv)
         std::vector<pp::Line> lineSegments = pp::findLineSegments(&linesFrame);
 
 
-printf("Size: %d \n", lineSegments.size());
         if(lineSegments.empty()) continue;
 
         for(auto segment : lineSegments) {
             cv::line(segmentsFrame, segment.getPoint1(), segment.getPoint2(), Scalar(0, 0, 255), 1, CV_AA);
         }
-
-
 
         pp::estimateVanishingPoint(lineSegments);
         std::vector<pp::Line> vanishingLines = pp::findVanishingLines(pp::vanishingPoint, lineSegments);
@@ -71,21 +69,21 @@ printf("Size: %d \n", lineSegments.size());
             cv::line(segments, segment.getPoint1(), segment.getPoint2(), Scalar(255), 1);
         }
 
-
+        // main lines
         for(auto &line : vanishingLines) {
-
             if(line.getPoint1().x <= pp::vanishingPoint.x) {
-                cv::line(frame, Point(0, line.getY(0)), Point(pp::vanishingPoint.x, line.getY(pp::vanishingPoint.x)), Scalar(0, 0, 255), 1, CV_AA);
+                cv::line(frame, Point(0, line.getY(0)), Point(pp::vanishingPoint.x, line.getY(pp::vanishingPoint.x)), mainColor, 2, CV_AA);
             } else {
-                cv::line(frame, Point(pp::vanishingPoint.x, line.getY(pp::vanishingPoint.x)), Point(640, line.getY(640)), Scalar(0, 0, 255), 1, CV_AA);
+                cv::line(frame, Point(pp::vanishingPoint.x, line.getY(pp::vanishingPoint.x)), Point(640, line.getY(640)), mainColor, 2, CV_AA);
             }
-           // cv::line(frame, Point(0, line.getY(0)), Point(640, line.getY(640)), Scalar(0, 0, 255), 1, CV_AA);
         }
 
-
-
-        circle(frame, pp::vanishingPoint, 15, Scalar(255, 0, 0), 6);
-
+        // vertical line
+        cv::line(frame, Point(pp::vanishingPoint.x, 0), Point(pp::vanishingPoint.x, FRAME_H), Scalar(255, 255, 255), 2, CV_AA);
+        // horizontal line
+        cv::line(frame, Point(0, pp::vanishingPoint.y), Point(FRAME_W, pp::vanishingPoint.y), Scalar(94, 180, 167), 2, CV_AA);
+        // vanishing point
+        circle(frame, pp::vanishingPoint, 15, Scalar(142, 57, 58), FILLED);
 
 
         imshow("Lines", frame);

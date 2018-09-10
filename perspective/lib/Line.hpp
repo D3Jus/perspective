@@ -34,6 +34,8 @@ namespace pp {
         int getB();
 
         float getSegmentLength();
+
+        bool intersects(Line line, cv::Point &r);
     };
 }
 
