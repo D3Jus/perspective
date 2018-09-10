@@ -52,20 +52,4 @@ namespace pp {
 
         return cv::sqrt(diff.x * diff.x + diff.y * diff.y);
     }
-
-    // from: http://answers.opencv.org/question/9511/how-to-find-the-intersection-point-of-two-lines/
-    bool Line::intersects(Line line, cv::Point &r) {
-        cv::Point x = line.getPoint1() - this->getPoint1();
-        cv::Point d1 = this->getPoint2() - this->getPoint1();
-        cv::Point d2 = line.getPoint2() - line.getPoint1();
-
-        float cross = d1.x*d2.y - d1.y*d2.x;
-        if (std::fabs(cross) < /*EPS*/1e-8)
-            return false;
-
-        double t1 = (x.x * d2.y - x.y * d2.x)/cross;
-        r = this->getPoint1() + d1 * t1;
-
-        return true;
-    }
 }

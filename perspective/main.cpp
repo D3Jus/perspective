@@ -2,6 +2,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include "lib/perspective.hpp"
+#include "lib/Tracker.cpp"
 
 #define FRAME_W 640
 #define FRAME_H 360
@@ -40,6 +41,11 @@ int main(int argc, char** argv)
     pp::reset();
     Scalar mainColor(142, 57, 58);
 
+    Tracker tracker;
+    Point2f a;
+    Point2f d;
+    Point2f e;
+    bool b = false;
     for(;;)
     {
         Mat frame;
@@ -48,6 +54,8 @@ int main(int argc, char** argv)
             break;
 
         resize(frame, frame, cv::Size(FRAME_W, FRAME_H), 0, 0, cv::INTER_AREA);
+
+        tracker.processImage(frame);
 
         Mat segmentsFrame = frame.clone();
         Mat linesFrame;
@@ -62,8 +70,31 @@ int main(int argc, char** argv)
         }
 
         pp::estimateVanishingPoint(lineSegments);
+
+
+/*        // vertical line
+        cv::line(frame, Point(pp::vanishingPoint.x, 0), Point(pp::vanishingPoint.x, FRAME_H), Scalar(255, 255, 255), 2, CV_AA);
+        // horizontal line
+        cv::line(frame, Point(0, pp::vanishingPoint.y), Point(FRAME_W, pp::vanishingPoint.y), Scalar(94, 180, 167), 2, CV_AA);
+        // vanishing point
+        circle(frame, pp::vanishingPoint, 15, Scalar(142, 57, 58), FILLED);*/
+
+
+
+        Mat invTrans = tracker.rigidTransform;
+        //warpAffine(frame,frame,invTrans.rowRange(0,2),Size());
         std::vector<pp::Line> vanishingLines = pp::findVanishingLines(pp::vanishingPoint, lineSegments);
 
+
+        if(!b) {
+            a = pp::vanishingPoint;
+        }
+
+        std::vector<cv::Point2f> notTrans = {a, d ,e};
+        std::vector<cv::Point2f> trans;
+        cv::perspectiveTransform(notTrans, trans, invTrans);
+        pp::vanishingPoint = trans.at(0);
+        cv::line(frame, trans.at(1), trans.at(2), mainColor, 4, CV_AA);
         Mat segments(cv::Size(FRAME_W, FRAME_H), CV_8UC1, Scalar(0));
         for(auto segment : lineSegments) {
             cv::line(segments, segment.getPoint1(), segment.getPoint2(), Scalar(255), 1);
@@ -79,12 +110,11 @@ int main(int argc, char** argv)
         }
 
         // vertical line
-        cv::line(frame, Point(pp::vanishingPoint.x, 0), Point(pp::vanishingPoint.x, FRAME_H), Scalar(255, 255, 255), 2, CV_AA);
+        cv::line(frame, Point(trans.at(0).x, 0), Point(trans.at(0).x, FRAME_H), Scalar(255, 255, 255), 2, CV_AA);
         // horizontal line
-        cv::line(frame, Point(0, pp::vanishingPoint.y), Point(FRAME_W, pp::vanishingPoint.y), Scalar(94, 180, 167), 2, CV_AA);
+        cv::line(frame, Point(0, trans.at(0).y), Point(FRAME_W, trans.at(0).y), Scalar(94, 180, 167), 2, CV_AA);
         // vanishing point
-        circle(frame, pp::vanishingPoint, 15, Scalar(142, 57, 58), FILLED);
-
+        circle(frame, trans.at(0), 15, Scalar(142, 57, 58), FILLED);
 
         imshow("Lines", frame);
         imshow("Segments", segmentsFrame);
