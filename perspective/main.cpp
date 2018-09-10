@@ -43,8 +43,6 @@ int main(int argc, char** argv)
 
     Tracker tracker;
     Point2f a;
-    Point2f d;
-    Point2f e;
     bool b = false;
     for(;;)
     {
@@ -83,18 +81,19 @@ int main(int argc, char** argv)
 
         Mat invTrans = tracker.rigidTransform;
         //warpAffine(frame,frame,invTrans.rowRange(0,2),Size());
-        std::vector<pp::Line> vanishingLines = pp::findVanishingLines(pp::vanishingPoint, lineSegments);
 
 
         if(!b) {
             a = pp::vanishingPoint;
+            b = true;
         }
 
-        std::vector<cv::Point2f> notTrans = {a, d ,e};
+        std::vector<cv::Point2f> notTrans = {a};
         std::vector<cv::Point2f> trans;
         cv::perspectiveTransform(notTrans, trans, invTrans);
         pp::vanishingPoint = trans.at(0);
-        cv::line(frame, trans.at(1), trans.at(2), mainColor, 4, CV_AA);
+        std::vector<pp::Line> vanishingLines = pp::findVanishingLines(pp::vanishingPoint, lineSegments);
+
         Mat segments(cv::Size(FRAME_W, FRAME_H), CV_8UC1, Scalar(0));
         for(auto segment : lineSegments) {
             cv::line(segments, segment.getPoint1(), segment.getPoint2(), Scalar(255), 1);
