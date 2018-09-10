@@ -6,18 +6,20 @@
 
 #include "Line.hpp"
 
-extern cv::Point vanishingPoint;
+namespace pp {
+    extern cv::Point vanishingPoint;
 
-void reset();
+    void reset();
 
-cv::Mat prepareFrame(cv::Mat input);
+    cv::Mat prepareFrame(cv::Mat input);
 
-std::vector<Line> findLineSegments(cv::Mat *input);
+    std::vector<Line> findLineSegments(cv::Mat *input);
 
-void estimateVanishingPoint(std::vector<Line> &input);
+    std::vector<Line> mergeLineSegments(std::vector<Line> input, bool leftSide);
 
-std::vector<Line> findVanishingLines(cv::Point2f vanishingPoint, std::vector<Line> lines);
+    void estimateVanishingPoint(std::vector<Line> &input);
 
-Line getHorizonLine(cv::Point2f vanishingPoint);
+    std::vector<Line> findVanishingLines(cv::Point2f vanishingPoint, std::vector<Line> lines);
+}
 
 #endif //PERSPECTIVE_PERSPECTIVE_H

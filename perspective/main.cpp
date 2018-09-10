@@ -37,7 +37,7 @@ int main(int argc, char** argv)
     String path = parser.get<String>("p");
 
     VideoCapture video(path);
-    reset();
+    pp::reset();
 
     for(;;)
     {
@@ -50,20 +50,21 @@ int main(int argc, char** argv)
 
         Mat segmentsFrame = frame.clone();
         Mat linesFrame;
-        linesFrame = prepareFrame(frame);
-        std::vector<Line> lineSegments = findLineSegments(&linesFrame);
+        linesFrame = pp::prepareFrame(frame);
+        std::vector<pp::Line> lineSegments = pp::findLineSegments(&linesFrame);
 
 
-
+printf("Size: %d \n", lineSegments.size());
+        if(lineSegments.empty()) continue;
 
         for(auto segment : lineSegments) {
             cv::line(segmentsFrame, segment.getPoint1(), segment.getPoint2(), Scalar(0, 0, 255), 1, CV_AA);
         }
 
-        if(lineSegments.empty()) continue;
 
-        estimateVanishingPoint(lineSegments);
-        std::vector<Line> vanishingLines = findVanishingLines(vanishingPoint, lineSegments);
+
+        pp::estimateVanishingPoint(lineSegments);
+        std::vector<pp::Line> vanishingLines = pp::findVanishingLines(pp::vanishingPoint, lineSegments);
 
         Mat segments(cv::Size(FRAME_W, FRAME_H), CV_8UC1, Scalar(0));
         for(auto segment : lineSegments) {
@@ -73,25 +74,22 @@ int main(int argc, char** argv)
 
         for(auto &line : vanishingLines) {
 
-            if(line.getPoint1().x <= vanishingPoint.x) {
-                cv::line(frame, Point(0, line.getY(0)), Point(vanishingPoint.x, line.getY(vanishingPoint.x)), Scalar(0, 0, 255), 1, CV_AA);
+            if(line.getPoint1().x <= pp::vanishingPoint.x) {
+                cv::line(frame, Point(0, line.getY(0)), Point(pp::vanishingPoint.x, line.getY(pp::vanishingPoint.x)), Scalar(0, 0, 255), 1, CV_AA);
             } else {
-                cv::line(frame, Point(vanishingPoint.x, line.getY(vanishingPoint.x)), Point(640, line.getY(640)), Scalar(0, 0, 255), 1, CV_AA);
+                cv::line(frame, Point(pp::vanishingPoint.x, line.getY(pp::vanishingPoint.x)), Point(640, line.getY(640)), Scalar(0, 0, 255), 1, CV_AA);
             }
            // cv::line(frame, Point(0, line.getY(0)), Point(640, line.getY(640)), Scalar(0, 0, 255), 1, CV_AA);
         }
 
-        for(auto line : vanishingLines) {
-            cv::line(frame, line.getPoint1(), line.getPoint2(), Scalar(0, 255, 0), 1, CV_AA);
-        }
 
-        circle(frame, vanishingPoint, 15, Scalar(255, 0, 0), 6);
-        Line hl = getHorizonLine(vanishingPoint);
 
-        cv::line(frame, Point(0, hl.getY(0)), Point(640, hl.getY(640)), Scalar(255, 0, 0), 1, CV_AA);
+        circle(frame, pp::vanishingPoint, 15, Scalar(255, 0, 0), 6);
+
+
 
         imshow("Lines", frame);
-        imshow("Segments", segments);
+        imshow("Segments", segmentsFrame);
 
         char key = cv::waitKey(10);
         if(key == 'p') {
