@@ -11,7 +11,19 @@ using namespace cv;
 const String keys =
         "{ h help |      | Print this message }"
         "{ p path |      | Input file path }"
+        "{ w write |      | Write video to file }"
         ;
+
+
+float widthRatio;
+float heightRatio;
+
+cv::Point toSize(cv::Point point) {
+    return cv::Point(point.x * widthRatio, point.y * heightRatio);
+}
+int toIntSize(int size) {
+    return (int) (size * widthRatio);
+}
 
 int main(int argc, char** argv)
 {
@@ -37,8 +49,22 @@ int main(int argc, char** argv)
     String path = parser.get<String>("p");
 
     VideoCapture video(path);
-    pp::reset();
+
+    // writer
+    int fcc = CV_FOURCC('M', 'J', 'P', 'G');
+    cv::Size frameSize(video.get(CV_CAP_PROP_FRAME_WIDTH), video.get(CV_CAP_PROP_FRAME_HEIGHT));
+    widthRatio = float(frameSize.width) / FRAME_W;
+    heightRatio = float(frameSize.height) / FRAME_H;
+
+    VideoWriter writer;
+
+    if(parser.has("w")) {
+        writer.open("./out.avi", fcc, video.get(cv::CAP_PROP_FPS), frameSize);
+
+    }
+
     Scalar mainColor(142, 57, 58);
+    pp::reset();
 
     for(;;)
     {
@@ -47,7 +73,7 @@ int main(int argc, char** argv)
         if(frame.empty())
             break;
 
-        resize(frame, frame, cv::Size(FRAME_W, FRAME_H), 0, 0, cv::INTER_AREA);
+        //resize(frame, frame, cv::Size(FRAME_W, FRAME_H), 0, 0, cv::INTER_AREA);
 
         Mat segmentsFrame = frame.clone();
         Mat linesFrame;
@@ -69,36 +95,46 @@ int main(int argc, char** argv)
             cv::line(segments, segment.getPoint1(), segment.getPoint2(), Scalar(255), 1);
         }
 
-        // main lines
-        for(auto &line : vanishingLines) {
+        for(auto line : vanishingLines) {
             if(line.getPoint1().x <= pp::vanishingPoint.x) {
-                cv::line(frame, Point(0, line.getY(0)), Point(pp::vanishingPoint.x, line.getY(pp::vanishingPoint.x)), mainColor, 2, CV_AA);
+                cv::line(frame, toSize(cv::Point(0, line.getY(0))), toSize(pp::vanishingPoint), mainColor, toIntSize(2), CV_AA);
             } else {
-                cv::line(frame, Point(pp::vanishingPoint.x, line.getY(pp::vanishingPoint.x)), Point(640, line.getY(640)), mainColor, 2, CV_AA);
+                cv::line(frame, toSize(pp::vanishingPoint), toSize(cv::Point(640, line.getY(640))), mainColor, toIntSize(2), CV_AA);
             }
         }
 
         // vertical line
-        cv::line(frame, Point(pp::vanishingPoint.x, 0), Point(pp::vanishingPoint.x, FRAME_H), Scalar(255, 255, 255), 2, CV_AA);
+        cv::line(frame,
+                 toSize(cv::Point(pp::vanishingPoint.x, 0)),
+                 toSize(cv::Point(pp::vanishingPoint.x, frame.cols)),
+                 cv::Scalar(255, 255, 255), toIntSize(2), CV_AA);
         // horizontal line
-        cv::line(frame, Point(0, pp::vanishingPoint.y), Point(FRAME_W, pp::vanishingPoint.y), Scalar(94, 180, 167), 2, CV_AA);
+        cv::line(frame,
+                 toSize(cv::Point(0, pp::vanishingPoint.y)),
+                 toSize(cv::Point(frame.rows, pp::vanishingPoint.y)),
+                 cv::Scalar(94, 180, 167), toIntSize(2), CV_AA);
         // vanishing point
-        circle(frame, pp::vanishingPoint, 15, Scalar(142, 57, 58), FILLED);
+        circle(frame, toSize(pp::vanishingPoint), toIntSize(15), mainColor, cv::FILLED);
 
 
-        imshow("Lines", frame);
-        imshow("Segments", segmentsFrame);
+        if(writer.isOpened()) {
+            writer.write(frame);
+        } else {
+            imshow("Lines", frame);
+            //imshow("Segments", segmentsFrame);
 
-        char key = cv::waitKey(10);
-        if(key == 'p') {
-            while (cv::waitKey(10) != 'p');
+            char key = cv::waitKey(10);
+            if (key == 'p') {
+                while (cv::waitKey(10) != 'p');
+            }
+            if (key == ' ') {
+                break;
+            }
+
         }
-        if(key == ' ') {
-            break;
-        }
-
-
     }
+
+    writer.release();
 
     return 0;
 }
