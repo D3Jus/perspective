@@ -1,6 +1,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include "perspective.hpp"
 #include "Line.hpp"
+#include "Tracker.cpp"
 
 #define FRAME_W 640
 #define FRAME_H 360
@@ -8,9 +9,13 @@
 
 namespace pp {
     cv::Point vanishingPoint;
+    Tracker tracker;
+    std::vector<cv::Point2f> vanishingPointVec;
+    bool vanishingPointTracking = false;
 
     void reset() {
         vanishingPoint = cv::Point(FRAME_W / 2, FRAME_H / 2);
+        vanishingPointTracking = false;
     }
 
     /**
@@ -24,6 +29,7 @@ namespace pp {
 
         resize(input, output, cv::Size(FRAME_W, FRAME_H), 0, 0, cv::INTER_AREA);
         cvtColor(output, output, CV_RGB2GRAY);
+        tracker.processImage(input);
 
         return output;
     }
@@ -151,6 +157,7 @@ namespace pp {
             }
         }
 
+
         cv::fitLine(mbCoordinates, output, CV_DIST_L1, 0, 0.001, 0.001);
 
         Line outputLine(cv::Point2f(0, (-output[2] * output[1] / output[0]) + output[3]),
@@ -158,7 +165,19 @@ namespace pp {
 
         cv::Point newVanishingPoint = cv::Point2f(outputLine.getM() * -1, outputLine.getB());
 
-        vanishingPoint = newVanishingPoint;
+
+        std::vector<cv::Point2f> estimatedVanishingPoint;
+
+        if(!vanishingPointTracking) {
+            vanishingPointVec.push_back(newVanishingPoint);
+            vanishingPointTracking = true;
+        }
+
+        cv::perspectiveTransform(vanishingPointVec, estimatedVanishingPoint, tracker.rigidTransform);
+
+        vanishingPoint =  estimatedVanishingPoint.at(0);
+
+        //vanishingPoint = newVanishingPoint;
     }
 
     std::vector<Line> findVanishingLines(cv::Point2f vanishingPoint, std::vector<Line> lines) {
