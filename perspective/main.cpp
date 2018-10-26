@@ -88,39 +88,45 @@ int main(int argc, char** argv)
         }
 
         pp::estimateVanishingPoint(lineSegments);
-        std::vector<pp::Line> vanishingLines = pp::findVanishingLines(pp::vanishingPoint, lineSegments);
+
 
         Mat segments(cv::Size(FRAME_W, FRAME_H), CV_8UC1, Scalar(0));
         for(auto segment : lineSegments) {
             cv::line(segments, segment.getPoint1(), segment.getPoint2(), Scalar(255), 1);
         }
 
+        Point vanishingPoint = pp::getVanigshingPoint();
+        std::vector<pp::Line> vanishingLines = pp::findVanishingLines(vanishingPoint, lineSegments);
+
         for(auto line : vanishingLines) {
-            if(line.getPoint1().x <= pp::vanishingPoint.x) {
-                cv::line(frame, toSize(cv::Point(0, line.getY(0))), toSize(pp::vanishingPoint), mainColor, toIntSize(2), CV_AA);
+            if(line.getPoint1().x <= vanishingPoint.x) {
+                cv::line(frame, toSize(cv::Point(0, line.getY(0))), toSize(vanishingPoint), mainColor, toIntSize(2), CV_AA);
             } else {
-                cv::line(frame, toSize(pp::vanishingPoint), toSize(cv::Point(640, line.getY(640))), mainColor, toIntSize(2), CV_AA);
+                cv::line(frame, toSize(vanishingPoint), toSize(cv::Point(640, line.getY(640))), mainColor, toIntSize(2), CV_AA);
             }
         }
 
         // vertical line
         cv::line(frame,
-                 toSize(cv::Point(pp::vanishingPoint.x, 0)),
-                 toSize(cv::Point(pp::vanishingPoint.x, frame.cols)),
+                 toSize(cv::Point(vanishingPoint.x, 0)),
+                 toSize(cv::Point(vanishingPoint.x, frame.cols)),
                  cv::Scalar(255, 255, 255), toIntSize(2), CV_AA);
         // horizontal line
         cv::line(frame,
-                 toSize(cv::Point(0, pp::vanishingPoint.y)),
-                 toSize(cv::Point(frame.rows, pp::vanishingPoint.y)),
+                 toSize(cv::Point(0, vanishingPoint.y)),
+                 toSize(cv::Point(frame.rows, vanishingPoint.y)),
                  cv::Scalar(94, 180, 167), toIntSize(2), CV_AA);
         // vanishing point
-        circle(frame, toSize(pp::vanishingPoint), toIntSize(15), mainColor, cv::FILLED);
+        //circle(frame, toSize(vanishingPoint), toIntSize(15), mainColor, cv::FILLED);
+        //circle(frame, toSize(pp::vanishingPoint), toIntSize(15),  Scalar(0, 0, 255), cv::FILLED);
 
 
         if(writer.isOpened()) {
             writer.write(frame);
         } else {
-            imshow("Lines", frame);
+            Mat show;
+            resize(frame, show, cv::Size(FRAME_W, FRAME_H), 0, 0, cv::INTER_AREA);
+            imshow("Lines", show);
             //imshow("Segments", segmentsFrame);
 
             char key = cv::waitKey(10);

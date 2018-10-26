@@ -5,9 +5,14 @@
 #define FRAME_W 640
 #define FRAME_H 360
 #define MIN_SEGMENT_LENGTH 20
+#define VANISHING_POINTS_LENGTH 10
 
 namespace pp {
+
     cv::Point vanishingPoint;
+    cv::Point vanishingPoints[VANISHING_POINTS_LENGTH];
+    bool vanishingPointsInitialized = false;
+    int i = 0;
 
     void reset() {
         vanishingPoint = cv::Point(FRAME_W / 2, FRAME_H / 2);
@@ -158,6 +163,12 @@ namespace pp {
 
         cv::Point newVanishingPoint = cv::Point2f(outputLine.getM() * -1, outputLine.getB());
 
+        vanishingPoints[i] = cv::Point2f(outputLine.getM() * -1, outputLine.getB());
+        if(!vanishingPointsInitialized && i == VANISHING_POINTS_LENGTH - 1) {
+            vanishingPointsInitialized = true;
+        }
+        i = (i + 1) % VANISHING_POINTS_LENGTH;
+
         vanishingPoint = newVanishingPoint;
     }
 
@@ -175,5 +186,20 @@ namespace pp {
 
         return output;
 
+    }
+
+    cv::Point getVanigshingPoint() {
+
+        if(!vanishingPointsInitialized) {
+            return cv::Point(0,0);
+        }
+
+        cv::Point sum;
+
+        for (const auto &vanishingPoint : vanishingPoints) {
+            sum += vanishingPoint;
+        }
+
+        return sum / VANISHING_POINTS_LENGTH;
     }
 }
