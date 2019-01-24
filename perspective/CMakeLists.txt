@@ -8,5 +8,5 @@ find_package(OpenCV REQUIRED)
 
 include(lib/lib_files.cmake)
 
-add_executable(perspective main.cpp ${LIB_FILES} lib/Line.cpp lib/Line.hpp)
+add_executable(perspective main.cpp ${LIB_FILES} lib/Line.cpp lib/Line.h lib/VanishingPoint.cpp lib/VanishingPoint.h)
 target_link_libraries(perspective ${OpenCV_LIBS})

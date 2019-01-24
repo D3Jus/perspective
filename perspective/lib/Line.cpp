@@ -2,7 +2,7 @@
 // Created by jus on 10.7.2018.
 //
 #include <opencv2/imgproc/imgproc.hpp>
-#include "Line.hpp"
+#include "Line.h"
 namespace pp {
     Line::Line(cv::Point point1, cv::Point point2) {
 

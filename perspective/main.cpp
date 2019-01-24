@@ -1,7 +1,7 @@
 #include <iostream>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
-#include "lib/perspective.hpp"
+#include "lib/perspective.h"
 
 #define FRAME_W 640
 #define FRAME_H 360
@@ -95,7 +95,12 @@ int main(int argc, char** argv)
             cv::line(segments, segment.getPoint1(), segment.getPoint2(), Scalar(255), 1);
         }
 
-        Point vanishingPoint = pp::getVanigshingPoint();
+        Point vanishingPoint;
+
+        if (!pp::vanishingPoint.get(vanishingPoint)) {
+            continue;
+        }
+
         std::vector<pp::Line> vanishingLines = pp::findVanishingLines(vanishingPoint, lineSegments);
 
         for(auto line : vanishingLines) {

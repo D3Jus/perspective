@@ -1,21 +1,19 @@
 #include <opencv2/imgproc/imgproc.hpp>
-#include "perspective.hpp"
-#include "Line.hpp"
+#include "perspective.h"
+#include "Line.h"
+#include "VanishingPoint.h"
 
 #define FRAME_W 640
 #define FRAME_H 360
 #define MIN_SEGMENT_LENGTH 20
-#define VANISHING_POINTS_LENGTH 10
 
 namespace pp {
 
-    cv::Point vanishingPoint;
-    cv::Point vanishingPoints[VANISHING_POINTS_LENGTH];
-    bool vanishingPointsInitialized = false;
-    int i = 0;
+    VanishingPoint vanishingPoint = VanishingPoint();
+
 
     void reset() {
-        vanishingPoint = cv::Point(FRAME_W / 2, FRAME_H / 2);
+        vanishingPoint = VanishingPoint();
     }
 
     /**
@@ -42,12 +40,17 @@ namespace pp {
         cv::Ptr<cv::LineSegmentDetector> ls = cv::createLineSegmentDetector(cv::LSD_REFINE_NONE);
         std::vector<cv::Vec4i> lineSegments;
         std::vector<float> horizonAngles;
+        cv::Point vp;
 
+        // vanishing point not initialized
+        if (!vanishingPoint.get(vp)) {
+            vp = cv::Point(FRAME_W / 2, FRAME_H / 2);
+        }
 
-        cv::Rect quadrant1(vanishingPoint, cv::Point(FRAME_W, 0));
-        cv::Rect quadrant2(vanishingPoint, cv::Point(0, 0));
-        cv::Rect quadrant3(vanishingPoint, cv::Point(0, FRAME_H));
-        cv::Rect quadrant4(vanishingPoint, cv::Point(FRAME_W, FRAME_H));
+        cv::Rect quadrant1(vp, cv::Point(FRAME_W, 0));
+        cv::Rect quadrant2(vp, cv::Point(0, 0));
+        cv::Rect quadrant3(vp, cv::Point(0, FRAME_H));
+        cv::Rect quadrant4(vp, cv::Point(FRAME_W, FRAME_H));
 
         std::vector<Line> quadrant1Lines;
         std::vector<Line> quadrant2Lines;
@@ -96,6 +99,10 @@ namespace pp {
         int d = 10;
         const cv::Point dPoint(0, d);
 
+        //here vanishing point must be initialized
+        cv::Point vp;
+        vanishingPoint.get(vp);
+
         std::sort(input.begin(), input.end(),
                   [](Line a, Line b) { return a.getSegmentLength() > b.getSegmentLength(); });
 
@@ -104,8 +111,8 @@ namespace pp {
         for (std::vector<Line>::size_type i = 0; i < input.size() - 1; i++) {
             std::vector<cv::Point> boundary = {
                     cv::Point(currentX, (int) input.at(i).getY(currentX)) + dPoint,
-                    cv::Point(vanishingPoint.x, (int) input.at(i).getY(vanishingPoint.x)) + dPoint,
-                    cv::Point(vanishingPoint.x, (int) input.at(i).getY(vanishingPoint.x)) - dPoint,
+                    cv::Point(vp.x, (int) input.at(i).getY(vp.x)) + dPoint,
+                    cv::Point(vp.x, (int) input.at(i).getY(vp.x)) - dPoint,
                     cv::Point(currentX, (int) input.at(i).getY(currentX)) - dPoint,
             };
 
@@ -161,15 +168,7 @@ namespace pp {
         Line outputLine(cv::Point2f(0, (-output[2] * output[1] / output[0]) + output[3]),
                         cv::Point2f(100, ((100 - output[2]) * output[1] / output[0]) + output[3]));
 
-        cv::Point newVanishingPoint = cv::Point2f(outputLine.getM() * -1, outputLine.getB());
-
-        vanishingPoints[i] = cv::Point2f(outputLine.getM() * -1, outputLine.getB());
-        if(!vanishingPointsInitialized && i == VANISHING_POINTS_LENGTH - 1) {
-            vanishingPointsInitialized = true;
-        }
-        i = (i + 1) % VANISHING_POINTS_LENGTH;
-
-        vanishingPoint = newVanishingPoint;
+        vanishingPoint.add(cv::Point2f(outputLine.getM() * -1, outputLine.getB()));
     }
 
     std::vector<Line> findVanishingLines(cv::Point2f vanishingPoint, std::vector<Line> lines) {
@@ -186,20 +185,5 @@ namespace pp {
 
         return output;
 
-    }
-
-    cv::Point getVanigshingPoint() {
-
-        if(!vanishingPointsInitialized) {
-            return cv::Point(0,0);
-        }
-
-        cv::Point sum;
-
-        for (const auto &vanishingPoint : vanishingPoints) {
-            sum += vanishingPoint;
-        }
-
-        return sum / VANISHING_POINTS_LENGTH;
     }
 }
